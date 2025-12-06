@@ -6,12 +6,12 @@ conn = sqlite3.connect("Student_wellbeing.db")
 cursor = conn.cursor()
 
 #Read xlsx
-file_path = "Database.xlsx"
+file_path = "database.xlsx"
 df1 = pd.read_excel(file_path, sheet_name=0, usecols=[0, 1, 2], skiprows=1)
-df2 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], skiprows=1)
-df3 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 13, 14, 15, 16, 17, 18], skiprows=1)
-df4 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 19], skiprows=1)
-df5 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 20, 21, 22], skiprows=1)
+df2 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], skiprows=1)
+df3 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 17, 18, 19, 20, 21, 22], skiprows=1)
+df4 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 23], skiprows=1)
+df5 = pd.read_excel(file_path, sheet_name=0, usecols=[2, 24, 25, 26], skiprows=1)
 
 # -----STUDENT TABLE------
 create_students_table = """
@@ -92,7 +92,7 @@ for index, row in df1.iterrows():
 # ----insert data to attendance table----
 for index, row in df2.iterrows():
     student_id = int(row.iloc[0])
-    for i in range(1, 11):
+    for i in range(1, 15):
         week = i
         status = int(row.iloc[i])
 

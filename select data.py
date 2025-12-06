@@ -3,7 +3,7 @@ import pandas as pd
 import struct
 
 #Show all rows
-#pd.set_option('display.max_rows', None)
+pd.set_option('display.max_rows', None)
 #Show all cols
 pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
@@ -46,3 +46,11 @@ print(df4)
 
 print("\nSurvey Table Visible：")
 print(df5)
+
+detabase_path = 'user_data.db'
+conn = sqlite3.connect(detabase_path)
+
+query6 = "SELECT * FROM users"
+df6 = pd.read_sql_query(query6, conn)
+print("\nUsers Table Visible：")
+print(df6)
