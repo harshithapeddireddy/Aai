@@ -95,6 +95,70 @@ def get_student_report(student_id):
         'accessed_by': request.current_user['name']
     })
 
+# ==================== JUNIOR STAFF ENDPOINTS (ANONYMIZED DATA) ====================
+
+@app.route('/api/stress-anonymized', methods=['GET'])
+@require_auth('view_stress_anonymized')
+def get_stress_anonymized():
+    """Get anonymized stress data for junior staff - no student names or IDs"""
+    stress_df = Stress_level_calculate(DATABASE_PATH)
+    
+    # Return only stress levels without identifiable information
+    anonymized_data = []
+    for i, (_, row) in enumerate(stress_df.iterrows(), 1):
+        anonymized_data.append({
+            'student_ref': f'Student {i}',  # Anonymous reference
+            'stress_level': round(row['stress_level'], 2),
+            'study_time': int(row['Study_Time']),
+            'entertainment_time': int(row['Entertainment_Time']),
+            'sleep_time': int(row['Sleep_Time'])
+        })
+    
+    # Calculate summary statistics
+    stress_levels = [d['stress_level'] for d in anonymized_data]
+    high_stress_count = len([s for s in stress_levels if s > 3])
+    
+    return jsonify({
+        'success': True,
+        'data': anonymized_data,
+        'statistics': {
+            'total_students': len(anonymized_data),
+            'average_stress': round(sum(stress_levels) / len(stress_levels), 2) if stress_levels else 0,
+            'high_stress_count': high_stress_count,
+            'low_stress_count': len(stress_levels) - high_stress_count
+        },
+        'accessed_by': request.current_user['name']
+    })
+
+@app.route('/api/sleep-alerts-anonymized', methods=['GET'])
+@require_auth('view_sleep_anonymized')
+def get_sleep_alerts_anonymized():
+    """Get anonymized sleep alerts for junior staff - no student names or IDs"""
+    alerts = generate_sleep_alerts(DATABASE_PATH)
+    
+    # Anonymize the alerts
+    anonymized_alerts = []
+    for i, alert in enumerate(alerts, 1):
+        anonymized_alerts.append({
+            'student_ref': f'Student {i}',
+            'type': alert['type'],
+            'severity': alert['severity'],
+            'value': alert['value'],
+            'category': alert['category']
+        })
+    
+    return jsonify({
+        'success': True,
+        'alerts': anonymized_alerts,
+        'count': len(anonymized_alerts),
+        'summary': {
+            'total_alerts': len(anonymized_alerts),
+            'high_severity': len([a for a in alerts if a['severity'] == 'high']),
+            'medium_severity': len([a for a in alerts if a['severity'] == 'medium'])
+        },
+        'accessed_by': request.current_user['name']
+    })
+
 @app.route('/api/sleep-alerts', methods=['GET'])
 @require_auth('view_sleep')
 def get_sleep_alerts():
@@ -961,6 +1025,11 @@ DASHBOARD_HTML = '''
             } else if (user.role === 'admin') {
                 // Admin can see all tabs, auto-switch to admin tab
                 showTab('admin');
+            } else if (user.role === 'junior_staff') {
+                // Junior staff can see overview and stress tab (anonymized data only)
+                attendanceTab.classList.add('disabled');
+                correlationTab.classList.add('disabled');
+                showTab('overview');
             }
             
             loadData();
@@ -989,6 +1058,9 @@ DASHBOARD_HTML = '''
             // Load role-specific data
             if (user.role === 'wellbeing_officer' || user.role === 'admin') {
                 loadStressData();
+            }
+            if (user.role === 'junior_staff') {
+                loadStressDataAnonymized();
             }
             if (user.role === 'course_lead' || user.role === 'admin') {
                 loadAttendanceData();
@@ -1107,6 +1179,98 @@ DASHBOARD_HTML = '''
                                                 </td>
                                             </tr>
                                         `).join('') : '<tr><td colspan="2" style="text-align: center; color: #27ae60;">No low sleep alerts ✓</td></tr>'}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+            
+            // Show ANONYMIZED stress levels summary for junior staff
+            if (user.role === 'junior_staff') {
+                const stressData = await fetchAPI('stress-anonymized');
+                const sleepData = await fetchAPI('sleep-alerts-anonymized');
+                
+                if (stressData.success) {
+                    const stats = stressData.statistics;
+                    const anonymizedStudents = stressData.data;
+                    
+                    // Find top 5 highest stress (anonymized)
+                    const stressStudents = anonymizedStudents
+                        .sort((a, b) => b.stress_level - a.stress_level)
+                        .slice(0, 5);
+                    
+                    // Get sleep alerts count
+                    const sleepAlertCount = sleepData.success ? sleepData.count : 0;
+                    const sleepAlerts = sleepData.success ? sleepData.alerts.slice(0, 5) : [];
+                    
+                    document.getElementById('quickSummary').innerHTML = `
+                        <div style="background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); color: white; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                            <h4 style="margin: 0; color: white;">🔒 Anonymized View - Student identities are protected</h4>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="card" style="background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); color: white;">
+                                <h3 style="color: white;">⚠️ Stress Level Summary</h3>
+                                <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 2.5em; font-weight: bold;">${stats.average_stress}</div>
+                                        <div style="opacity: 0.8;">Avg Stress</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 2.5em; font-weight: bold; color: #ffeb3b;">${stats.high_stress_count}</div>
+                                        <div style="opacity: 0.8;">High Stress</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 2.5em; font-weight: bold;">${stats.total_students}</div>
+                                        <div style="opacity: 0.8;">Total Students</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                <h3 style="color: white;">😴 Sleep Alert Summary</h3>
+                                <div style="display: flex; justify-content: space-around; margin-top: 15px;">
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 2.5em; font-weight: bold; color: ${sleepAlertCount > 0 ? '#ffeb3b' : 'white'};">${sleepAlertCount}</div>
+                                        <div style="opacity: 0.8;">Low Sleep Students</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-size: 2.5em; font-weight: bold;">≤7h</div>
+                                        <div style="opacity: 0.8;">Threshold</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+                            <div class="card">
+                                <h3>🚨 Top 5 High Stress (Anonymized)</h3>
+                                <table style="width: 100%; margin-top: 10px;">
+                                    <thead><tr><th style="text-align: left;">Reference</th><th style="text-align: right;">Stress Level</th></tr></thead>
+                                    <tbody>
+                                        ${stressStudents.map(s => `
+                                            <tr>
+                                                <td>${s.student_ref}</td>
+                                                <td style="text-align: right; color: ${s.stress_level > 3 ? '#e74c3c' : s.stress_level > 2 ? '#f39c12' : '#27ae60'}; font-weight: bold;">
+                                                    ${s.stress_level.toFixed(2)}
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="card">
+                                <h3>😴 Low Sleep Alerts (Anonymized)</h3>
+                                <table style="width: 100%; margin-top: 10px;">
+                                    <thead><tr><th style="text-align: left;">Reference</th><th style="text-align: right;">Sleep Hours</th></tr></thead>
+                                    <tbody>
+                                        ${sleepAlerts.length > 0 ? sleepAlerts.map(s => `
+                                            <tr>
+                                                <td>${s.student_ref}</td>
+                                                <td style="text-align: right; color: ${s.value < 6 ? '#e74c3c' : '#f39c12'}; font-weight: bold;">
+                                                    ${s.value} hours
+                                                </td>
+                                            </tr>
+                                        `).join('') : '<tr><td colspan="2" style="text-align: center; color: #27ae60;">No low sleep alerts ✓</td></tr>'}}
                                     </tbody>
                                 </table>
                             </div>
@@ -1257,6 +1421,78 @@ DASHBOARD_HTML = '''
                     <tr>
                         <td>${s.Student_Name}</td>
                         <td>${s.Student_ID}</td>
+                        <td style="color:#e74c3c;font-weight:bold">${s.stress_level.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        
+        async function loadStressDataAnonymized() {
+            // Load anonymized stress data for junior staff
+            const data = await fetchAPI('stress-anonymized');
+            if (data.success) {
+                const stats = data.statistics;
+                document.getElementById('stressCards').innerHTML = `
+                    <div class="card" style="background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%); color: white;">
+                        <h3 style="color: white;">🔒 Anonymized View</h3>
+                        <div style="font-size: 0.9em; opacity: 0.9;">Student identities protected</div>
+                    </div>
+                    <div class="card">
+                        <h3>Average Stress Level</h3>
+                        <div class="value">${stats.average_stress}</div>
+                    </div>
+                    <div class="card">
+                        <h3>High Stress Students</h3>
+                        <div class="value warning">${stats.high_stress_count}</div>
+                    </div>
+                    <div class="card">
+                        <h3>Total Students</h3>
+                        <div class="value">${stats.total_students}</div>
+                    </div>
+                `;
+                
+                // Create anonymized stress chart
+                const ctx = document.getElementById('stressChart').getContext('2d');
+                if (charts.stress) charts.stress.destroy();
+                charts.stress = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.data.map(s => s.student_ref),
+                        datasets: [{
+                            label: 'Stress Level',
+                            data: data.data.map(s => s.stress_level),
+                            backgroundColor: data.data.map(s => 
+                                s.stress_level > 3 ? '#e74c3c' : s.stress_level > 2 ? '#f39c12' : '#27ae60'
+                            )
+                        }]
+                    },
+                    options: { responsive: true }
+                });
+                
+                // Load anonymized heatmap
+                const tbody = document.querySelector('#stressHeatmap tbody');
+                tbody.innerHTML = data.data.map((s, i) => {
+                    const stressNorm = Math.min(1, Math.max(0, s.stress_level / 6));
+                    const studyNorm = Math.min(1, Math.max(0, s.study_time / 12));
+                    const entNorm = Math.min(1, Math.max(0, s.entertainment_time / 8));
+                    const sleepNorm = Math.min(1, Math.max(0, (10 - s.sleep_time) / 10));
+                    return `
+                    <tr class="heatmap-row">
+                        <td><strong>${s.student_ref}</strong><br><small style="color:#888">Anonymized</small></td>
+                        <td><span class="heatmap-cell" style="background:${getHeatmapColor(stressNorm)}">${s.stress_level}</span></td>
+                        <td><span class="heatmap-cell" style="background:${getHeatmapColor(studyNorm)}">${s.study_time}h</span></td>
+                        <td><span class="heatmap-cell" style="background:${getHeatmapColor(entNorm)}">${s.entertainment_time}h</span></td>
+                        <td><span class="heatmap-cell" style="background:${getHeatmapColor(sleepNorm)}">${s.sleep_time}h</span></td>
+                    </tr>
+                `}).join('');
+                
+                // Load anonymized high stress table
+                const highStressData = data.data.filter(s => s.stress_level > 3);
+                const stressTableBody = document.querySelector('#stressTable tbody');
+                stressTableBody.innerHTML = highStressData.map(s => `
+                    <tr>
+                        <td>${s.student_ref}</td>
+                        <td>-</td>
                         <td style="color:#e74c3c;font-weight:bold">${s.stress_level.toFixed(2)}</td>
                     </tr>
                 `).join('');

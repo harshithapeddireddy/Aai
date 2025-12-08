@@ -45,6 +45,18 @@ AUTHORIZED_USERS = {
         'permissions': ['all', 'manage_students', 'add_student', 'update_student', 'delete_student', 
                        'view_stress', 'view_sleep', 'view_students', 'view_reports', 'view_notifications',
                        'view_attendance', 'view_assignments', 'view_correlation', 'view_absent_students']
+    },
+    'anne': {
+        'password_hash': hashlib.sha256('anne123'.encode()).hexdigest(),
+        'role': 'junior_staff',
+        'name': 'Anne',
+        'permissions': ['view_stress_anonymized', 'view_sleep_anonymized', 'view_notifications']
+    },
+    'elizabeth': {
+        'password_hash': hashlib.sha256('elizabeth123'.encode()).hexdigest(),
+        'role': 'junior_staff',
+        'name': 'Elizabeth',
+        'permissions': ['view_stress_anonymized', 'view_sleep_anonymized', 'view_notifications']
     }
 }
 

@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Wellbeing System - Architecture Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        h2 {
+            text-align: center;
+            color: #666;
+            font-weight: normal;
+            margin-bottom: 30px;
+        }
+        .diagram-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 20px auto;
+            max-width: 1400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .diagram-title {
+            font-size: 1.3em;
+            color: #667eea;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        .legend {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .legend h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .legend-item {
+            display: inline-block;
+            margin: 5px 15px;
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        .mermaid {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎓 Student Wellbeing Dashboard</h1>
+    <h2>System Architecture Design</h2>
+
+    <!-- High-Level Architecture -->
+    <div class="diagram-container">
+        <div class="diagram-title">1. High-Level System Architecture</div>
+        <div class="mermaid">
+graph TB
+    subgraph "👤 Users"
+        WO[/"🧑‍⚕️ Wellbeing Officers<br/>(Kayla, Abigail, John)"/]
+        CL[/"👨‍🏫 Course Lead"/]
+        AD[/"👨‍💼 Admin"/]
+        JS[/"👩‍💻 Junior Staff<br/>(Anne, Elizabeth)"/]
+    end
+
+    subgraph "🌐 Frontend Layer"
+        UI[["📱 Single Page Application<br/>(HTML/CSS/JavaScript)"]]
+        Charts[["📊 Chart.js<br/>Visualizations"]]
+    end
+
+    subgraph "🔐 Authentication Layer"
+        Auth{{"🔑 Role-Based<br/>Access Control"}}
+        Sessions[("💾 Session<br/>Storage")]
+    end
+
+    subgraph "⚙️ Backend Layer - Flask Application"
+        API[["🔌 REST API<br/>Endpoints"]]
+        
+        subgraph "📦 Core Modules"
+            AuthMod["auth.py<br/>Authentication"]
+            AppMod["app.py<br/>Main Routes"]
+            NotifMod["notifications.py<br/>Alert System"]
+            AnalyticsMod["analytics.py<br/>Data Analysis"]
+        end
+        
+        subgraph "📈 Data Processing"
+            FuncSW["funcsw.py<br/>Stress Calculation"]
+            FuncD["funcd.py<br/>Attendance/Grades"]
+        end
+    end
+
+    subgraph "💾 Data Layer"
+        DB[(("🗄️ SQLite Database<br/>Student_wellbeing.db"))]
+    end
+
+    WO & CL & AD & JS --> UI
+    UI --> Charts
+    UI <--> Auth
+    Auth <--> Sessions
+    Auth <--> API
+    API --> AuthMod & AppMod & NotifMod & AnalyticsMod
+    AppMod --> FuncSW & FuncD
+    NotifMod --> FuncSW & FuncD
+    AnalyticsMod --> DB
+    FuncSW & FuncD --> DB
+
+    style WO fill:#27ae60,color:#fff
+    style CL fill:#3498db,color:#fff
+    style AD fill:#9b59b6,color:#fff
+    style JS fill:#95a5a6,color:#fff
+    style DB fill:#f39c12,color:#fff
+    style Auth fill:#e74c3c,color:#fff
+        </div>
+    </div>
+
+    <!-- Database Schema -->
+    <div class="diagram-container">
+        <div class="diagram-title">2. Database Schema (Entity Relationship)</div>
+        <div class="mermaid">
+erDiagram
+    Students {
+        int Student_ID PK
+        string First_Name
+        string Last_Name
+        string Gender
+        int Age
+        string Email
+    }
+    
+    Survey {
+        int Survey_ID PK
+        int Student_ID FK
+        float Study_time
+        float Entertainment_time
+        float Sleep_time
+        float Stress_level
+    }
+    
+    Attendance {
+        int Attendance_ID PK
+        int Student_ID FK
+        int Week
+        boolean Present
+        int Class_Date
+    }
+    
+    Assignment {
+        int Assignment_ID PK
+        int Student_ID FK
+        int Week
+        float Grade
+        date Submission_Date
+    }
+    
+    Assessment {
+        int Assessment_ID PK
+        int Student_ID FK
+        string Type
+        float Score
+        int Week
+    }
+
+    Students ||--o{ Survey : "fills out"
+    Students ||--o{ Attendance : "has"
+    Students ||--o{ Assignment : "submits"
+    Students ||--o{ Assessment : "takes"
+        </div>
+    </div>
+
+    <!-- Role-Based Access Control -->
+    <div class="diagram-container">
+        <div class="diagram-title">3. Role-Based Access Control (RBAC)</div>
+        <div class="mermaid">
+flowchart LR
+    subgraph "🔐 Authentication Flow"
+        Login["POST /login"] --> Validate{"Validate<br/>Credentials"}
+        Validate -->|Valid| Token["Generate<br/>Session Token"]
+        Validate -->|Invalid| Reject["401<br/>Unauthorized"]
+        Token --> Store["Store in<br/>active_sessions"]
+    end
+
+    subgraph "👥 Roles & Permissions"
+        subgraph "Wellbeing Officer"
+            WO_P1["✅ view_stress"]
+            WO_P2["✅ view_sleep"]
+            WO_P3["✅ view_students"]
+            WO_P4["✅ view_reports"]
+            WO_P5["✅ view_notifications"]
+        end
+        
+        subgraph "Course Lead"
+            CL_P1["✅ view_attendance"]
+            CL_P2["✅ view_assignments"]
+            CL_P3["✅ view_correlation"]
+            CL_P4["✅ view_absent_students"]
+        end
+        
+        subgraph "Junior Staff"
+            JS_P1["✅ view_stress_anonymized"]
+            JS_P2["✅ view_sleep_anonymized"]
+            JS_P3["✅ view_notifications"]
+        end
+        
+        subgraph "Admin"
+            AD_P1["✅ ALL permissions"]
+            AD_P2["✅ manage_students"]
+            AD_P3["✅ add/update/delete"]
+        end
+    end
+
+    Store --> WO_P1 & CL_P1 & JS_P1 & AD_P1
+
+    style Login fill:#667eea,color:#fff
+    style Token fill:#27ae60,color:#fff
+    style Reject fill:#e74c3c,color:#fff
+        </div>
+    </div>
+
+    <!-- API Endpoints -->
+    <div class="diagram-container">
+        <div class="diagram-title">4. REST API Endpoints Structure</div>
+        <div class="mermaid">
+flowchart TB
+    subgraph "🔒 Authentication"
+        E1["POST /login"]
+        E2["POST /logout"]
+    end
+
+    subgraph "📊 Stress Monitoring"
+        E3["GET /api/stress-levels"]
+        E4["GET /api/high-stress-students"]
+        E5["GET /api/stress-anonymized"]
+        E6["GET /api/stress-visualization"]
+        E7["GET /api/stress-heatmap"]
+    end
+
+    subgraph "😴 Sleep Monitoring"
+        E8["GET /api/sleep-alerts"]
+        E9["GET /api/sleep-alerts-anonymized"]
+    end
+
+    subgraph "📅 Attendance"
+        E10["GET /api/attendance"]
+        E11["GET /api/absent-students"]
+        E12["GET /api/attendance-alerts"]
+    end
+
+    subgraph "📈 Analytics"
+        E13["GET /api/correlation"]
+        E14["GET /api/participation"]
+        E15["GET /api/grade-distribution"]
+    end
+
+    subgraph "🔔 Notifications"
+        E16["GET /api/notifications"]
+        E17["GET /api/notification-summary"]
+    end
+
+    subgraph "⚙️ Admin"
+        E18["GET /api/admin/students"]
+        E19["POST /api/admin/students"]
+        E20["PUT /api/admin/students/:id"]
+        E21["DELETE /api/admin/students/:id"]
+    end
+
+    subgraph "📄 Reports"
+        E22["GET /api/student-report/:id"]
+    end
+
+    style E1 fill:#667eea,color:#fff
+    style E2 fill:#667eea,color:#fff
+    style E3 fill:#27ae60,color:#fff
+    style E5 fill:#95a5a6,color:#fff
+    style E18 fill:#9b59b6,color:#fff
+        </div>
+    </div>
+
+    <!-- Data Flow -->
+    <div class="diagram-container">
+        <div class="diagram-title">5. Data Flow & Processing Pipeline</div>
+        <div class="mermaid">
+flowchart LR
+    subgraph "📥 Data Input"
+        Raw[("Raw Student<br/>Data")]
+    end
+
+    subgraph "🧮 Processing Layer"
+        direction TB
+        Stress["Stress Calculation<br/>stress = study×0.56 - ent×0.1<br/>- sleep×0.06 + 0.5"]
+        Attend["Attendance Rate<br/>classes_attended /<br/>total_classes × 100"]
+        Grades["Grade Analysis<br/>Assignment & Assessment<br/>Score Aggregation"]
+    end
+
+    subgraph "⚠️ Alert Generation"
+        StressAlert{"Stress > 3.0?"}
+        SleepAlert{"Sleep ≤ 7h?"}
+        AttendAlert{"Attendance < 70%?"}
+    end
+
+    subgraph "📤 Output"
+        Dashboard["📊 Dashboard<br/>Visualizations"]
+        Notif["🔔 Notifications"]
+        Reports["📄 Reports"]
+    end
+
+    Raw --> Stress & Attend & Grades
+    Stress --> StressAlert
+    Stress --> SleepAlert
+    Attend --> AttendAlert
+    
+    StressAlert -->|Yes| Notif
+    SleepAlert -->|Yes| Notif
+    AttendAlert -->|Yes| Notif
+    
+    Stress & Attend & Grades --> Dashboard
+    Stress & Attend & Grades --> Reports
+
+    style Raw fill:#3498db,color:#fff
+    style Stress fill:#e74c3c,color:#fff
+    style Attend fill:#f39c12,color:#fff
+    style Grades fill:#27ae60,color:#fff
+    style Notif fill:#9b59b6,color:#fff
+        </div>
+    </div>
+
+    <!-- Component Interaction -->
+    <div class="diagram-container">
+        <div class="diagram-title">6. Module Dependencies & Interactions</div>
+        <div class="mermaid">
+flowchart TB
+    subgraph "🎯 Main Application"
+        App["app.py<br/>Flask Application<br/>1888 lines"]
+    end
+
+    subgraph "🔐 Security"
+        Auth["auth.py<br/>• AUTHORIZED_USERS dict<br/>• authenticate_user()<br/>• require_auth decorator<br/>• Session management"]
+    end
+
+    subgraph "📊 Data Analysis"
+        FuncSW["funcsw.py<br/>• Stress_level_calculate()<br/>• filter_high_stress_students()<br/>• Stress_report()"]
+        FuncD["funcd.py<br/>• Attendance_rate_calculate()<br/>• Students_grades()<br/>• Chart generators"]
+        Analytics["analytics.py<br/>• get_stress_over_time_data()<br/>• get_attendance_assignment_correlation()<br/>• get_participation_overview()"]
+    end
+
+    subgraph "🔔 Alerting"
+        Notif["notifications.py<br/>• generate_stress_alerts()<br/>• generate_sleep_alerts()<br/>• generate_attendance_alerts()<br/>• THRESHOLDS"]
+    end
+
+    subgraph "💾 Database"
+        DB["database.py<br/>• Connection handling<br/>• Query utilities"]
+        SQLite[("Student_wellbeing.db")]
+    end
+
+    App --> Auth
+    App --> FuncSW & FuncD & Analytics
+    App --> Notif
+    FuncSW --> SQLite
+    FuncD --> SQLite
+    Analytics --> SQLite
+    Notif --> FuncSW & FuncD
+    DB --> SQLite
+
+    style App fill:#667eea,color:#fff
+    style Auth fill:#e74c3c,color:#fff
+    style SQLite fill:#f39c12,color:#fff
+        </div>
+    </div>
+
+    <!-- Deployment Architecture -->
+    <div class="diagram-container">
+        <div class="diagram-title">7. Deployment Architecture</div>
+        <div class="mermaid">
+flowchart TB
+    subgraph "🖥️ Development Environment"
+        Dev["Developer Machine<br/>macOS"]
+        VSCode["VS Code IDE"]
+        Venv["Python venv<br/>.venv/"]
+    end
+
+    subgraph "🐍 Runtime"
+        Python["Python 3.x"]
+        Flask["Flask Dev Server<br/>Port 5001"]
+    end
+
+    subgraph "📦 Dependencies"
+        Pandas["pandas"]
+        Matplotlib["matplotlib"]
+        SQLite3["sqlite3"]
+        ChartJS["Chart.js (CDN)"]
+    end
+
+    subgraph "🗄️ Data Storage"
+        DB[("SQLite Database<br/>Student_wellbeing.db")]
+        Excel["database.xlsx<br/>(Source Data)"]
+    end
+
+    subgraph "🌐 Client Access"
+        Browser["Web Browser<br/>http://127.0.0.1:5001"]
+    end
+
+    Dev --> VSCode --> Venv --> Python --> Flask
+    Flask --> Pandas & Matplotlib & SQLite3
+    Flask --> DB
+    Excel -.->|"Initial Load"| DB
+    ChartJS --> Browser
+    Flask <--> Browser
+
+    style Flask fill:#667eea,color:#fff
+    style DB fill:#f39c12,color:#fff
+    style Browser fill:#27ae60,color:#fff
+        </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="diagram-container">
+        <div class="legend">
+            <h3>📋 Legend & Color Coding</h3>
+            <span class="legend-item" style="background:#667eea;color:white;">Primary/Core Components</span>
+            <span class="legend-item" style="background:#27ae60;color:white;">Wellbeing Officer Access</span>
+            <span class="legend-item" style="background:#3498db;color:white;">Course Lead Access</span>
+            <span class="legend-item" style="background:#9b59b6;color:white;">Admin Access</span>
+            <span class="legend-item" style="background:#95a5a6;color:white;">Junior Staff (Anonymized)</span>
+            <span class="legend-item" style="background:#e74c3c;color:white;">Authentication/Security</span>
+            <span class="legend-item" style="background:#f39c12;color:white;">Database/Storage</span>
+            
+            <h3 style="margin-top:20px;">📁 File Structure</h3>
+            <pre style="background:#333;color:#fff;padding:15px;border-radius:5px;overflow-x:auto;">
+Aai/
+├── app.py              # Main Flask application (1888 lines)
+├── auth.py             # Authentication & RBAC (146 lines)
+├── notifications.py    # Alert generation system
+├── analytics.py        # Data analysis functions
+├── funcsw.py           # Stress level calculations
+├── funcd.py            # Attendance & grade functions
+├── database.py         # Database utilities
+├── Student_wellbeing.db # SQLite database
+├── test_app.py         # Test suite (61 tests)
+└── run_app.py          # Application launcher
+            </pre>
+            
+            <h3 style="margin-top:20px;">🔑 User Credentials</h3>
+            <table style="width:100%;border-collapse:collapse;margin-top:10px;">
+                <tr style="background:#667eea;color:white;">
+                    <th style="padding:10px;text-align:left;">Username</th>
+                    <th style="padding:10px;text-align:left;">Password</th>
+                    <th style="padding:10px;text-align:left;">Role</th>
+                </tr>
+                <tr style="background:#e8f5e9;"><td style="padding:8px;">kayla / abigail / john</td><td>kayla123 / abigail123 / john123</td><td>Wellbeing Officer</td></tr>
+                <tr style="background:#e3f2fd;"><td style="padding:8px;">courselead</td><td>lead123</td><td>Course Lead</td></tr>
+                <tr style="background:#f3e5f5;"><td style="padding:8px;">admin</td><td>admin123</td><td>Administrator</td></tr>
+                <tr style="background:#eceff1;"><td style="padding:8px;">anne / elizabeth</td><td>anne123 / elizabeth123</td><td>Junior Staff</td></tr>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            securityLevel: 'loose'
+        });
+    </script>
+</body>
+</html>
