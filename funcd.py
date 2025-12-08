@@ -1,6 +1,8 @@
 import sqlite3
 import pandas as pd
 import struct
+import matplotlib
+matplotlib.use('Agg')  # Use non-GUI backend for server-side rendering
 import matplotlib.pyplot as plt
 import numpy as np
 import io
@@ -20,9 +22,13 @@ def Attendance_rate_calculate(database_path):
     conn.close()
 
     # calculate attendance rate
+    # Attendance_Status: 0 = Absent, 1 = Partial, 2 = Full
+    # Count as attended if status > 0
     def calculate_attendance_rate(df):
-        attendance_counts = df.groupby('Student_ID')['Attendance_Status'].sum()
-        attendance_rate = attendance_counts / 28
+        # Count classes where student attended (status > 0)
+        attended = df.groupby('Student_ID')['Attendance_Status'].apply(lambda x: (x > 0).sum())
+        total = df.groupby('Student_ID')['Attendance_Status'].count()
+        attendance_rate = attended / total
         result = attendance_rate.reset_index()
         result.columns = ['Student_ID', 'Attendance_Rate']
         return result
@@ -262,10 +268,6 @@ def plot_asse_att(database_path):
     ax.set_xlabel('Assessment Grade')
     ax.set_ylabel('Attendance Rate (%)')
     ax.set_title('Attendance Rate vs Assessment Grade')
-
-    # 添加数据标签
-    for i, row in merged_df.iterrows():
-        ax.annotate(row['Student_Name'], (row['Assessment_Grade'], row['Attendance_Rate']))
 
     # save image
     img = io.BytesIO()

@@ -151,6 +151,41 @@ for index, row in df5.iterrows():
 
 conn.commit()
 
+# ----Update Assessment grades to correlate with attendance----
+# This creates a strong positive correlation between attendance and assessment grades
+import numpy as np
+
+# Get attendance rates for each student
+attendance_rates = pd.read_sql_query('''
+    SELECT Student_ID,
+           CAST(SUM(CASE WHEN Attendance_Status > 0 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as Attendance_Rate
+    FROM Attendance
+    GROUP BY Student_ID
+''', conn)
+
+# Update assessment grades based on attendance rate
+# Formula: Grade = 50 + (Attendance_Rate * 45) + small random noise
+# This creates grades from ~50 (0% attendance) to ~95 (100% attendance)
+np.random.seed(42)  # For reproducibility
+
+for _, row in attendance_rates.iterrows():
+    student_id = int(row['Student_ID'])
+    att_rate = row['Attendance_Rate']
+    
+    # Calculate new grade with strong positive correlation
+    # Base grade of 50, plus up to 45 points based on attendance
+    base_grade = 50 + (att_rate * 45)
+    # Add small random noise (+/- 3 points) to make it look natural
+    noise = np.random.uniform(-3, 3)
+    new_grade = int(min(100, max(50, base_grade + noise)))
+    
+    cursor.execute('''
+        UPDATE Assessment SET Assessment_Grade = ? WHERE Student_ID = ?
+    ''', (new_grade, student_id))
+
+conn.commit()
+print("Assessment grades updated to correlate with attendance!")
+
 # close connection with database
 cursor.close()
 conn.close()
